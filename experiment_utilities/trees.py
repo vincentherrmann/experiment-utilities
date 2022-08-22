@@ -1,3 +1,6 @@
+from functools import reduce
+# These functions are heavily inspired by jax pytrees
+
 def tree_flatten(tree, is_leaf=None):
     def traverse_leaves(node, is_leaf=None):
         leaves = []
@@ -51,4 +54,10 @@ def tree_map(f, tree, rest=[], is_leaf=None):
     processed_leaves = [f(*xs) for xs in zip(*all_leaves)]
     processed_tree = tree_fill(processed_leaves, structure, is_leaf)
     return processed_tree
+
+
+def tree_reduce(f, tree, is_leaf=None):
+    leaves, structure = tree_flatten(tree, is_leaf)
+    r = reduce(f, leaves)
+    return r
 

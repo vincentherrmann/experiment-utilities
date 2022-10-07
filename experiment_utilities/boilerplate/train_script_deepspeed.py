@@ -150,7 +150,7 @@ def main(args):
             model_output = model(x.view(batch_size, 784))
 
             loss = F.cross_entropy(model_output, target)
-            model_engine.backward()
+            model_engine.backward(loss)
             model_engine.step()
 
             meter.update({

@@ -39,11 +39,16 @@ class AverageMeter(object):
 
 class MultiMeter(object):
     """Acts as average meter for multiple values at once"""
-    def __init__(self, name_list, keep_track_of_extrema_list=None):
+    def __init__(self, name_list=[], keep_track_of_extrema_list=None):
         self.meters = {}
         for i, name in enumerate(name_list):
             self.meters[name] = AverageMeter(keep_track_of_extrema_list[i]
                                              if keep_track_of_extrema_list is not None else True)
+
+    def add_meter(self, key, keep_track_of_extrema=True):
+        if key in self.meters.keys():
+            raise Exception(f"The meter '{key}' already exists!")
+        self.meters[key] = AverageMeter(keep_track_of_extrema)
 
     def reset(self, name_list=None):
         if name_list is None:
@@ -55,6 +60,8 @@ class MultiMeter(object):
 
     def update(self, val_dict, n=1):
         for k, v in val_dict.items():
+            if k not in self.meters.keys():
+                self.add_meter(k)
             self.meters[k].update(v, n=n)
 
     def __getitem__(self, key):

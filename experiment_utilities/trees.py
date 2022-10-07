@@ -1,6 +1,7 @@
 from functools import reduce
 # These functions are heavily inspired by jax pytrees
 
+
 def tree_flatten(tree, is_leaf=None):
     def traverse_leaves(node, is_leaf=None):
         leaves = []

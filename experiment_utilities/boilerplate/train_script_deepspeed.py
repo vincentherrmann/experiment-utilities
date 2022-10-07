@@ -71,12 +71,20 @@ def main(args):
         np.random.seed(args.seed)
         random.seed(args.seed)
 
+    deepspeed.init_distributed()
+
     ### DATA ################################################################
+    if torch.distributed.get_rank() != 0:
+        # might be downloading data, let rank 0 download first
+        torch.distributed.barrier()
     train_dataset = torchvision.datasets.MNIST(root="/home/vincent/data", train=True,
                                                transform=torchvision.transforms.ToTensor(),
                                                download=True)
     eval_dataset = torchvision.datasets.MNIST(root="/home/vincent/data", train=False,
                                               transform=torchvision.transforms.ToTensor())
+    if torch.distributed.get_rank() == 0:
+        # data is downloaded, indicate other ranks can proceed
+        torch.distributed.barrier()
 
     train_dataloader = torch.utils.data.DataLoader(
         dataset=train_dataset,
@@ -102,6 +110,9 @@ def main(args):
                                                          model=model,
                                                          model_parameters=model_parameters)
 
+    fp16 = model_engine.fp16_enabled()
+    print(f'fp16={fp16}')
+
     ### EVALUATION ################################################################
     @torch.no_grad()
     def evaluate():
@@ -115,8 +126,10 @@ def main(args):
         for eval_step, batch in enumerate(eval_dataloader):
             if eval_step >= 10000:
                 break
-            batch = tree_map(lambda x: x.to(model_engine.device), batch)
+            batch = tree_map(lambda x: x.to(model_engine.local_rank), batch)
             x, target = batch
+            if fp16:
+                x = x.half()
             batch_size = x.shape[0]
 
             model_output = model(x.view(batch_size, 784))
@@ -143,8 +156,10 @@ def main(args):
     ### TRAIN LOOP ################################################################
     while step < args.num_training_steps:
         for batch in train_dataloader:
-            batch = tree_map(lambda x: x.to(model_engine.device), batch)
+            batch = tree_map(lambda x: x.to(model_engine.local_rank), batch)
             x, target = batch
+            if fp16:
+                x = x.half()
             batch_size = x.shape[0]
 
             model_output = model(x.view(batch_size, 784))
@@ -174,12 +189,12 @@ def main(args):
                 if eval_loss < lowest_eval_loss:
                     lowest_eval_loss = eval_loss
                     patience_count = 0
-                    if args.save_model and log_with_wandb:
+                    if args.save_model and log_with_wandb and model_engine.local_rank == 0:
                         torch.save(
                             model.cpu(),
                             os.path.join(logger().run.dir, args.model_name),
                         )
-                        model.to(device)
+                        model.to(model_engine.local_rank)
                 else:
                     patience_count += 1
                     if patience_count >= args.patience:

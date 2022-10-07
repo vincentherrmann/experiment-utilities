@@ -143,7 +143,7 @@ def main(args):
     ### TRAIN LOOP ################################################################
     while step < args.num_training_steps:
         for batch in train_dataloader:
-            batch = tree_map(lambda x: x.to(model_engine), batch)
+            batch = tree_map(lambda x: x.to(model_engine.device), batch)
             x, target = batch
             batch_size = x.shape[0]
 

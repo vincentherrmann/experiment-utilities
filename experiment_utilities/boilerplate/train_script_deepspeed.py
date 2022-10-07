@@ -73,7 +73,8 @@ def main(args):
 
     ### DATA ################################################################
     train_dataset = torchvision.datasets.MNIST(root="/home/vincent/data", train=True,
-                                               transform=torchvision.transforms.ToTensor())
+                                               transform=torchvision.transforms.ToTensor(),
+                                               download=True)
     eval_dataset = torchvision.datasets.MNIST(root="/home/vincent/data", train=False,
                                               transform=torchvision.transforms.ToTensor())
 

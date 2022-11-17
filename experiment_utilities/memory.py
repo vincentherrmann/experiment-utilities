@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 
+from experiment_utilities.trees import tree_flatten, tree_map, tree_fill, tree_modify
 
 class GeneralMemory(torch.nn.Module):
     """
@@ -61,3 +62,58 @@ class GeneralMemory(torch.nn.Module):
         for key, buffer in self.memory_dict.items():
             mem_dict[key] = buffer[:self.size]
         return mem_dict
+
+class TreeMemory(GeneralMemory):
+    def __init__(self, size, shape_tree, type_tree=None, device=None):
+        # artifact dict: dictionary of the artifacts to be stored in memory of the form {"name": shape, ...}
+        # size the maximum size of the memory
+
+        shapes, structure = tree_flatten(shape_tree, is_leaf=self.is_leaf)
+        self.structure = structure
+        self.shapes = shapes
+        self.num_leaves = len(shapes)
+
+        if type_tree is None:
+            type_tree = tree_fill([torch.float] * self.num_leaves, structure=structure)
+
+        self.memory_tree = tree_map(lambda shape, type: torch.zeros([size] + list(shape), dtype=type, device=device),
+                                    tree=shape_tree, rest=[type_tree], is_leaf=self.is_leaf)
+
+        self.ptr, self.size, self.max_size = 0, 0, size
+
+    def store(self, data_tree):
+        tree_modify(self.store_leave, tree=self.memory_tree, rest=[data_tree])
+
+        self.ptr = (self.ptr + 1) % self.max_size
+        self.size = min(self.size + 1, self.max_size)
+
+    def store_leave(self, memory, data):
+        memory[self.ptr] = data
+
+    def sample_batch(self, batch_size=32, idxs=None):
+        if idxs is None:
+            idxs = np.random.randint(0, self.size, size=batch_size)
+        batch_tree = tree_map(lambda memory: memory[idxs], tree=self.memory_tree)
+        return batch_tree
+
+    def get_sequence(self, idx, length=None):
+        assert idx <= self.size
+        assert length <= self.size
+
+        mem_dict = {}
+        if self.ptr < self.size:
+            start = idx - length
+            if start >= 0:
+                seq_tree = tree_map(lambda memory: memory[start:idx], tree=self.memory_tree)
+            else:
+                seq_tree = tree_map(lambda memory: torch.cat([memory[start:], memory[:idx]], dim=0),
+                                    tree=self.memory_tree)
+        else:
+            start = 0 if length is None else max(0, idx - length)
+            seq_tree = tree_map(lambda memory: memory[start:idx], tree=self.memory_tree)
+
+        return seq_tree
+
+    @staticmethod
+    def is_leaf(x):
+        return (type(x) is tuple or type(x) is list) and type(x[0]) is int

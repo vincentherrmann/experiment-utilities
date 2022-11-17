@@ -56,6 +56,12 @@ def tree_map(f, tree, rest=[], is_leaf=None):
     processed_tree = tree_fill(processed_leaves, structure, is_leaf)
     return processed_tree
 
+def tree_modify(f, tree, rest=[], is_leaf=None):
+    leaves, structure = tree_flatten(tree, is_leaf)
+    all_leaves = [leaves] + [tree_flatten(r, is_leaf)[0] for r in rest]
+    for xs in zip(*all_leaves):
+        f(*xs)
+
 
 def tree_reduce(f, tree, is_leaf=None):
     leaves, structure = tree_flatten(tree, is_leaf)

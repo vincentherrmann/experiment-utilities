@@ -123,6 +123,14 @@ def main(args):
     policy.to(device)
     policy_optimizer = torch.optim.Adam(policy.parameters(), lr=args.lr)
 
+    critic = torch.nn.Sequential(
+        torch.nn.Linear(num_actions, args.hidden_size),
+        torch.nn.ReLU(),
+        torch.nn.Linear(args.hidden_size, 1)
+    )
+    critic.to(device)
+    critic_optimizer = torch.optim.Adam(critic.parameters(), lr=args.lr)
+
     ### MEMORY ################################################################
     memory = GeneralMemory(size=args.replay_buffer_size,
                            artifact_shapes={
@@ -248,7 +256,6 @@ def main(args):
 
     def update_policy(num_training_steps):
         return
-
 
 
     ### MAIN LOOP ################################################################

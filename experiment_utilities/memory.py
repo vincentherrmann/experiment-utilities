@@ -63,11 +63,12 @@ class GeneralMemory(torch.nn.Module):
             mem_dict[key] = buffer[:self.size]
         return mem_dict
 
-class TreeMemory(GeneralMemory):
+
+class TreeMemory(torch.nn.Module):
     def __init__(self, size, shape_tree, type_tree=None, device=None):
         # artifact dict: dictionary of the artifacts to be stored in memory of the form {"name": shape, ...}
         # size the maximum size of the memory
-
+        super().__init__()
         shapes, structure = tree_flatten(shape_tree, is_leaf=self.is_leaf)
         self.structure = structure
         self.shapes = shapes
@@ -88,7 +89,7 @@ class TreeMemory(GeneralMemory):
         self.size = min(self.size + 1, self.max_size)
 
     def store_leave(self, memory, data):
-        memory[self.ptr] = data
+        memory[self.ptr] = data.detach()
 
     def sample_batch(self, batch_size=32, idxs=None):
         if idxs is None:

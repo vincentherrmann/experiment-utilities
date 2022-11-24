@@ -52,6 +52,8 @@ def tree_fill(leaves, structure, is_leaf=None):
 def tree_map(f, tree, rest=[], is_leaf=None):
     leaves, structure = tree_flatten(tree, is_leaf)
     all_leaves = [leaves] + [tree_flatten(r, is_leaf)[0] for r in rest]
+    if len(rest) > 0:
+        assert len(leaves) == len(all_leaves[1])
     processed_leaves = [f(*xs) for xs in zip(*all_leaves)]
     processed_tree = tree_fill(processed_leaves, structure, is_leaf)
     return processed_tree

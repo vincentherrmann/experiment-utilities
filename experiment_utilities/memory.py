@@ -99,10 +99,13 @@ class TreeMemory(torch.nn.Module):
 
     def get_sequence(self, idx, length=None):
         assert idx <= self.size
-        assert length <= self.size
+        if length is not None:
+            assert length <= self.size
 
         mem_dict = {}
         if self.ptr < self.size:
+            if length is None:
+                length = self.size
             start = idx - length
             if start >= 0:
                 seq_tree = tree_map(lambda memory: memory[start:idx], tree=self.memory_tree)
@@ -114,6 +117,9 @@ class TreeMemory(torch.nn.Module):
             seq_tree = tree_map(lambda memory: memory[start:idx], tree=self.memory_tree)
 
         return seq_tree
+
+    def get_whole_memory(self):
+        return self.get_sequence(self.size)
 
     @staticmethod
     def is_leaf(x):

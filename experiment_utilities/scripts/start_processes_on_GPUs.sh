@@ -17,7 +17,7 @@ command=$1
 for i in $(seq 1 $num_agents)
 do
     # Assign each agent to a different GPU (cycling through the list of GPUs if necessary)
-    gpu=${gpus[$i % $num_gpus]}
+    gpu=${gpus[$((i % $num_gpus))]}
 
     # Start the agent with the specified command with the CUDA_VISIBLE_DEVICES environment variable set
     CUDA_VISIBLE_DEVICES=$gpu $command &

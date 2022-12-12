@@ -1,5 +1,5 @@
 import argparse
-import os
+import subprocess
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
@@ -20,7 +20,8 @@ def main():
         gpu_id = gpu_ids[i % len(gpu_ids)]
         command_to_run = f"CUDA_VISIBLE_DEVICES={gpu_id} {command}"
         print(f"executing command: {command_to_run}")
-        os.system(command_to_run)
+        # execute command in background thread
+        subprocess.Popen(command_to_run, shell=True)
 
 if __name__ == '__main__':
     main()

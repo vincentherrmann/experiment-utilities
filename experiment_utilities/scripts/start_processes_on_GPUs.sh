@@ -7,9 +7,19 @@
 
 # Set default values for the number of agents and GPUs
 num_agents=${1:-1}
-gpus=${2:-0}
-num_gpus=${#gpus[@]}
 
+# get the list of GPUs (so the second argument and all following arguments except the last one)
+# gpus=${@:2:$(($#-2))}
+
+length=$(($#-1))
+gpus=${@:1:$length}
+
+#gpus=(${@:2:$num_agents})
+
+#gpus=${2:-0}
+num_gpus=${#gpus}
+
+echo "gpus: $gpus"
 echo "num available gpus: $num_gpus"
 
 # Get the command to run from the remaining command line arguments
@@ -23,5 +33,6 @@ do
     gpu=${gpus[$((i % $num_gpus))]}
 
     # Start the agent with the specified command with the CUDA_VISIBLE_DEVICES environment variable set
+    echo "command to execute: CUDA_VISIBLE_DEVICES=$gpu $command"
     CUDA_VISIBLE_DEVICES=$gpu $command &
 done

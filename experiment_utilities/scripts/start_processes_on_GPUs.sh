@@ -8,6 +8,9 @@
 # Set default values for the number of agents and GPUs
 num_agents=${1:-1}
 gpus=${2:-0}
+num_gpus=${#gpus[@]}
+
+echo "num available gpus: $num_gpus"
 
 # Get the command to run from the remaining command line arguments
 shift $(($# - 1))

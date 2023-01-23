@@ -53,6 +53,10 @@ def test_tree_memory():
                                     tree=shape_tree, is_leaf=memory.is_leaf)
         memory.store(data_tree)
 
+    data_tree = tree_map(lambda shape: torch.rand([15] + list(shape)),
+                         tree=shape_tree, is_leaf=memory.is_leaf)
+    memory.store_multiple(data_tree)
+
     tree_batch = memory.sample_batch(8)
     tree_seq = memory.get_sequence(17, 10)
     pass

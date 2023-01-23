@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 
-from experiment_utilities.trees import tree_flatten, tree_map, tree_fill, tree_modify
+from experiment_utilities.trees import tree_flatten, tree_map, tree_fill, tree_modify, tree_reduce
 
 class GeneralMemory(torch.nn.Module):
     """
@@ -88,8 +88,26 @@ class TreeMemory(torch.nn.Module):
         self.ptr = (self.ptr + 1) % self.max_size
         self.size = min(self.size + 1, self.max_size)
 
+    def store_multiple(self, data_tree):
+        n = tree_reduce(lambda x, y: y.shape[0], tree=data_tree)
+        if self.ptr + n >= self.max_size:
+            n1 = self.max_size - self.ptr
+            tree_1 = tree_map(lambda x: x[:n1], tree=data_tree)
+            tree_modify(self.store_multiple_leaves, tree=self.memory_tree, rest=[tree_1])
+            self.ptr = 0
+            tree_2 = tree_map(lambda x: x[n1:], tree=data_tree)
+            tree_modify(self.store_multiple_leaves, tree=self.memory_tree, rest=[tree_2])
+            self.ptr = n - n1
+        else:
+            tree_modify(self.store_multiple_leaves, tree=self.memory_tree, rest=[data_tree])
+            self.ptr = (self.ptr + n) % self.max_size
+
     def store_leave(self, memory, data):
         memory[self.ptr] = data.detach()
+
+    def store_multiple_leaves(self, memory, data):
+        n = data.shape[0]
+        memory[self.ptr:self.ptr + n] = data.detach()
 
     def sample_batch(self, batch_size=32, idxs=None):
         if idxs is None:

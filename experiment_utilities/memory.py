@@ -101,6 +101,7 @@ class TreeMemory(torch.nn.Module):
         else:
             tree_modify(self.store_multiple_leaves, tree=self.memory_tree, rest=[data_tree])
             self.ptr = (self.ptr + n) % self.max_size
+        self.size = min(self.size + n, self.max_size)
 
     def store_leave(self, memory, data):
         memory[self.ptr] = data.detach()

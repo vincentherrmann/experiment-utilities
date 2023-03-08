@@ -110,6 +110,10 @@ class TreeMemory(torch.nn.Module):
         n = data.shape[0]
         memory[self.ptr:self.ptr + n] = data.detach()
 
+    def reset(self):
+        tree_modify(lambda x: x.zero_(), tree=self.memory_tree)
+        self.ptr, self.size = 0, 0
+
     def sample_batch(self, batch_size=32, idxs=None):
         if idxs is None:
             idxs = np.random.randint(0, self.size, size=batch_size)
@@ -143,3 +147,16 @@ class TreeMemory(torch.nn.Module):
     @staticmethod
     def is_leaf(x):
         return (type(x) is tuple or type(x) is list) and type(x[0]) is int
+
+
+class TreeMemoryDataset(torch.utils.data.Dataset, TreeMemory):
+    # this class is a TreeMemory wrapped as a dataset
+    def __init__(self, size, shape_tree, type_tree=None, device=None):
+        TreeMemory.__init__(self, size=size, shape_tree=shape_tree, type_tree=type_tree, device=device)
+        torch.utils.data.Dataset.__init__(self)
+
+    def __getitem__(self, idx):
+        return self.sample_batch(idxs=idx)
+
+    def __len__(self):
+        return self.size

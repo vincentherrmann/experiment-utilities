@@ -114,9 +114,12 @@ class TreeMemory(torch.nn.Module):
         tree_modify(lambda x: x.zero_(), tree=self.memory_tree)
         self.ptr, self.size = 0, 0
 
-    def sample_batch(self, batch_size=32, idxs=None):
+    def sample_batch(self, batch_size=32, idxs=None, without_replacement=False):
         if idxs is None:
-            idxs = np.random.randint(0, self.size, size=batch_size)
+            if without_replacement:
+                idxs = np.random.choice(self.size, size=batch_size, replace=False)
+            else:
+                idxs = np.random.randint(0, self.size, size=batch_size)
         batch_tree = tree_map(lambda memory: memory[idxs], tree=self.memory_tree)
         return batch_tree
 

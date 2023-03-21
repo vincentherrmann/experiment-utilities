@@ -8,7 +8,7 @@ def tree_flatten(tree, is_leaf=None, reference_tree=None):
         if is_leaf is not None and is_leaf(node):
             return [node]
         elif type(node) is list or type(node) is tuple:
-            for i in len(node):
+            for i in range(len(node)):
                 leaves.extend(traverse_leaves(node[i], is_leaf,
                                               reference_node[i] if reference_node is not None else None))
         elif type(node) is dict:

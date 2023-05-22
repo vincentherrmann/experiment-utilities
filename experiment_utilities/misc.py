@@ -1,4 +1,7 @@
 import torch
+import numpy
+import random
+
 
 # Turns a dictionary into a class
 class Dict2Class(object):
@@ -9,6 +12,30 @@ class Dict2Class(object):
 
 def num_params(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+
+def seed_everything(seed):
+    random.seed(seed)
+    numpy.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+
+
+def fix_seed(func):
+    """The wrapped function will be executed with the same seed,
+    the original seed will be restored after execution."""
+    def wrapper(*args, **kwargs):
+        # sample a new seed
+        new_seed = random.randint(0, 2**32 - 1)
+        if "seed" in kwargs:
+            seed_everything(kwargs["seed"])
+        else:
+            seed_everything(1234)
+        result = func(*args, **kwargs)
+        seed_everything(new_seed)
+        return result
+
+    return wrapper
 
 
 

@@ -1,6 +1,8 @@
 import torch
 import numpy
 import random
+import io
+from PIL import Image
 
 
 # Turns a dictionary into a class
@@ -36,6 +38,17 @@ def fix_seed(func):
         return result
 
     return wrapper
+
+
+def figure2PIL(fig=None):
+    """Converts a matplotlib figure to a PIL Image and returns it"""
+    if fig is None:
+        fig = plt.gcf()
+    buf = io.BytesIO()
+    fig.savefig(buf)
+    buf.seek(0)
+    img = Image.open(buf)
+    return img
 
 
 

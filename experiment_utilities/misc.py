@@ -31,6 +31,7 @@ def fix_seed(func):
         new_seed = random.randint(0, 2**32 - 1)
         if "seed" in kwargs:
             seed_everything(kwargs["seed"])
+            del kwargs["seed"]
         else:
             seed_everything(1234)
         result = func(*args, **kwargs)

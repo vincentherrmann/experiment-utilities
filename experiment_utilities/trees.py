@@ -2,6 +2,24 @@ from functools import reduce
 # These functions are heavily inspired by jax pytrees
 
 
+def is_leaf_type_check(node_type):
+    is_node = node_type is dict or node_type is list or node_type is tuple
+    return not is_node
+
+
+def child_is_leaf(node):
+    node_type = type(node)
+    if is_leaf_type_check(node_type):
+        return True
+    if node_type is dict:
+        child = next(iter(node.values()))
+    else:
+        child = node[0]
+    if is_leaf_type_check(type(child)):
+        return True
+    return False
+
+
 def tree_flatten(tree, is_leaf=None, reference_tree=None):
     def traverse_leaves(node, is_leaf=None, reference_node=None):
         leaves = []
@@ -63,8 +81,9 @@ def tree_map(f, tree, rest=[], is_leaf=None):
     if len(rest) > 0:
         assert len(leaves) == len(all_leaves[1])
     processed_leaves = [f(*xs) for xs in zip(*all_leaves)]
-    processed_tree = tree_fill(processed_leaves, structure, is_leaf)
+    processed_tree = tree_fill(processed_leaves, structure)
     return processed_tree
+
 
 def tree_modify(f, tree, rest=[], is_leaf=None):
     leaves, structure = tree_flatten(tree, is_leaf)

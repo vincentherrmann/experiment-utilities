@@ -1,3 +1,8 @@
+# It is used to start multiple processes on multiple GPUs.
+# Its main purpose is starting the agents of a wandb sweep. To run it, execute
+# python path_to_this_script "command_to_run" number_of_processes ids_of_available_GPUs
+# python ~/Projects/experiment-utilities/experiment_utilities/scripts/start_processes_on_GPUs.py "wandb agent vincentherrmann/some-project/5awmhojb" 12 0 1 2 3
+
 import argparse
 import subprocess
 

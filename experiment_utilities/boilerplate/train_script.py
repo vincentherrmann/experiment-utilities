@@ -7,6 +7,7 @@ import torchvision
 from experiment_utilities.trees import tree_map
 from experiment_utilities.meters import MultiMeter
 from experiment_utilities.wandb_logging import Logger
+from experiment_utilities.misc import fix_seed
 import os
 import os.path
 import argparse
@@ -88,9 +89,8 @@ def main(args):
 
     ### EVALUATION ################################################################
     @torch.no_grad()
+    @fix_seed
     def evaluate():
-        seed = torch.randint(0, 1_000_000, size=(1,)).item()
-        torch.manual_seed(123)
         model.eval()
 
         total_num_examples = 0
@@ -114,7 +114,6 @@ def main(args):
             total_num_examples += batch_size
         eval_loss = total_loss / total_num_examples
         eval_accuracy = total_num_correct / total_num_examples
-        torch.manual_seed(seed)
         model.train()
         return eval_loss, eval_accuracy
 

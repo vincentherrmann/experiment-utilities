@@ -52,7 +52,6 @@ def figure2PIL(fig=None):
     return img
 
 
-
 hash_key_1 = torch.tensor(0x58a849af6cbf585a, dtype=torch.long)
 hash_key_2 = torch.tensor(0x5ca118cb4d828a5e, dtype=torch.long)
 def hash64(x):

@@ -65,30 +65,53 @@ class GeneralMemory(torch.nn.Module):
 
 
 class TreeMemory(torch.nn.Module):
-    def __init__(self, size, shape_tree, type_tree=None, device=None):
+    def __init__(self, size, shape_tree=None, type_tree=None, device=None):
         # artifact dict: dictionary of the artifacts to be stored in memory of the form {"name": shape, ...}
         # size the maximum size of the memory
         super().__init__()
+
+        if shape_tree is not None:
+            shapes, structure = tree_flatten(shape_tree, is_leaf=self.is_leaf)
+            self.structure = structure
+            self.shapes = shapes
+            self.num_leaves = len(shapes)
+
+            if type_tree is None:
+                type_tree = tree_fill([torch.float] * self.num_leaves, structure=structure)
+
+            self.memory_tree = tree_map(lambda shape, type: torch.zeros([size] + list(shape), dtype=type, device=device),
+                                        tree=shape_tree, rest=[type_tree], is_leaf=self.is_leaf)
+        else:
+            self.memory_tree = None
+        self.device = device
+        self.ptr, self.size, self.max_size = 0, 0, size
+
+    def initialize_memory(self, example_tree):
+        shape_tree = tree_map(lambda x: x.shape, tree=example_tree)
         shapes, structure = tree_flatten(shape_tree, is_leaf=self.is_leaf)
         self.structure = structure
         self.shapes = shapes
         self.num_leaves = len(shapes)
 
-        if type_tree is None:
-            type_tree = tree_fill([torch.float] * self.num_leaves, structure=structure)
-
-        self.memory_tree = tree_map(lambda shape, type: torch.zeros([size] + list(shape), dtype=type, device=device),
+        type_tree = tree_map(lambda x: x.dtype, tree=example_tree)
+        self.memory_tree = tree_map(lambda shape, type: torch.zeros([self.max_size] + list(shape),
+                                                                    dtype=type, device=self.device),
                                     tree=shape_tree, rest=[type_tree], is_leaf=self.is_leaf)
-
-        self.ptr, self.size, self.max_size = 0, 0, size
+        pass
 
     def store(self, data_tree):
+        if self.memory_tree is None:
+            self.initialize_memory(data_tree)
+
         tree_modify(self.store_leave, tree=self.memory_tree, rest=[data_tree])
 
         self.ptr = (self.ptr + 1) % self.max_size
         self.size = min(self.size + 1, self.max_size)
 
     def store_multiple(self, data_tree):
+        if self.memory_tree is None:
+            self.initialize_memory(tree_map(lambda x: x[0], tree=data_tree))
+
         n = tree_reduce(lambda x, y: y.shape[0], tree=data_tree)
         if self.ptr + n >= self.max_size:
             n1 = self.max_size - self.ptr
@@ -163,3 +186,13 @@ class TreeMemoryDataset(torch.utils.data.Dataset, TreeMemory):
 
     def __len__(self):
         return self.size
+
+
+class WeightedMemoryTree(TreeMemory):
+    def __init__(self, size, shape_tree, type_tree=None, device=None):
+        super().__init__(size=size, shape_tree=shape_tree, type_tree=type_tree, device=device)
+        self.weights = torch.zeros(size, device=device)
+
+    def compute_weights(self):
+        relevant_data = self.memory
+        # TODO

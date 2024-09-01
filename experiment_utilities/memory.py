@@ -113,6 +113,9 @@ class TreeMemory(torch.nn.Module):
             self.initialize_memory(tree_map(lambda x: x[0], tree=data_tree))
 
         n = tree_reduce(lambda x, y: y.shape[0], tree=data_tree)
+        if type(n) is not int:
+            # if there is only one leaf, the reduce function returns the leaf itself
+            n = n.shape[0]
         if self.ptr + n >= self.max_size:
             n1 = self.max_size - self.ptr
             tree_1 = tree_map(lambda x: x[:n1], tree=data_tree)
@@ -175,6 +178,62 @@ class TreeMemory(torch.nn.Module):
         return (type(x) is tuple or type(x) is list) and type(x[0]) is int
 
 
+class WeightedTreeMemory(TreeMemory):
+    def __init__(self, size, shape_tree=None, type_tree=None, device=None, compute_weights=None):
+        super().__init__(size=size, shape_tree=shape_tree, type_tree=type_tree, device=device)
+        if compute_weights is None:
+            compute_weights = self.compute_exponential_recency_weights
+        self.compute_weights = compute_weights
+        self.weights = torch.zeros(size, device=device)
+
+    def store(self, data_tree):
+        super().store(data_tree)
+        self.weights = self.compute_weights(self)
+
+    def store_multiple(self, data_tree):
+        super().store_multiple(data_tree)
+        self.weights = self.compute_weights(self)
+
+    def reset(self):
+        super().reset()
+        self.weights.zero_()
+
+    def initialize_memory(self, example_tree):
+        super().initialize_memory(example_tree)
+        self.weights.zero_()
+
+    def sample_batch(self, batch_size=32, idxs=None, without_replacement=False):
+        if idxs is None:
+            if without_replacement:
+                effective_weights = weights.clone()
+                idxs = []
+                for _ in range(batch_size):
+                    idx = torch.distributions.Categorical(probs=effective_weights).sample()
+                    idxs.append(idx)
+                    effective_weights[idx] = 0.
+                    effective_weights = effective_weights / effective_weights.sum()
+                idxs = torch.tensor(idxs, device=self.device)
+            else:
+                idxs = torch.distributions.Categorical(probs=self.weights).sample((batch_size,))
+        batch_tree = tree_map(lambda memory: memory[idxs], tree=self.memory_tree)
+        return batch_tree
+
+    @staticmethod
+    def compute_exponential_recency_weights(tree_memory, gamma=0.99):
+        size = tree_memory.size
+        # exponential decay with gamma
+        time_from_now = torch.arange(size, dtype=torch.float, device=tree_memory.device).flip(0)
+        weights = torch.pow(gamma, time_from_now.float())
+        weights = weights / weights.sum()
+
+        if tree_memory.ptr != tree_memory.size:
+            weights = torch.cat([weights[-tree_memory.ptr:], weights[:-tree_memory.ptr]], dim=0)
+        elif tree_memory.size != tree_memory.max_size:
+            weights = torch.cat([weights, torch.zeros(tree_memory.max_size - weights.shape[0],
+                                                      device=tree_memory.device)], dim=0)
+        return weights
+
+
 class TreeMemoryDataset(torch.utils.data.Dataset, TreeMemory):
     # this class is a TreeMemory wrapped as a dataset
     def __init__(self, size, shape_tree, type_tree=None, device=None):
@@ -186,13 +245,3 @@ class TreeMemoryDataset(torch.utils.data.Dataset, TreeMemory):
 
     def __len__(self):
         return self.size
-
-
-class WeightedMemoryTree(TreeMemory):
-    def __init__(self, size, shape_tree, type_tree=None, device=None):
-        super().__init__(size=size, shape_tree=shape_tree, type_tree=type_tree, device=device)
-        self.weights = torch.zeros(size, device=device)
-
-    def compute_weights(self):
-        relevant_data = self.memory
-        # TODO
